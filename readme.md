@@ -1,88 +1,174 @@
-# Project Title
+# Análisis constitucional: las Constituciones de 1886 y 1991 en Colombia
 
-One Paragraph of project description goes here
+Una constitución política puede definir el éxito de un país. En esta se ve reflejada la calidad de las instituciones, lo que al final forma los incentivos de los ciudadanos e incluso organiza una determinada estructura productiva (Acemoglu & Robinson, 2012).
 
-## Getting Started
+En Colombia hay una buena oportunidad de hacer un análisis constitucional, ya que a los dos últimas constituciones las separan 105 años.
+La de 1886 es conservadora, centralizada, le da poder a la iglesia y censuró actividades liberales.
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+La de 1991 es liberal, favorable al comercio y a la inversión privada, generó un estado laico, amplió los derechos de los individuos y es enfática en respetar las libertades individuales.
 
-### Prerequisites
+## Librerías utilizadas
 
-What things you need to install the software and how to install them
+NLTK, WordCloud, pylab, numpy
 
-```
-Give examples
-```
+## Codigo
 
-### Installing
+import re
+import nltk
+import pylab
+import numpy
 
-A step by step series of examples that tell you have to get a development env running
+from nltk.corpus import stopwords
+from matplotlib import pyplot
+from pandas import Series
+from wordcloud import WordCloud
+from PIL import Image
 
-Say what the step will be
+stopwords = stopwords.words('spanish')
 
-```
-Give the example
-```
+def leer_documento(ruta):
 
-And repeat
+    # Abrir archivo en formato utf-8
+    archivo = open(ruta, 'r', encoding='utf-8')
 
-```
-until finished
-```
+    # Leer el contenido del archivo
+    documento = archivo.read()
 
-End with an example of getting some data out of the system or using it for a little demo
+    # Cerrar el archivo
+    archivo.close()
 
-## Running the tests
+    # Reemplazar todos los caracteres distintos de a-z, À-ÿ, espacios o saltos de línea por ''
+    caracteres = re.compile('[^a-zÀ-ÿ \n\r]', re.IGNORECASE)
+    documento = caracteres.sub('', documento)
 
-Explain how to run the automated tests for this system
+    # Reemplazar los saltos de línea o múltiples espacios, por un único espacio
+    espacios = re.compile('[\n\r]+|\s\s+')
+    documento = espacios.sub(' ', documento)
+    documento = documento.lower().split()
 
-### Break down into end to end tests
+    # Filtra el contenido por palabras de importancia
+    documento = [palabra for palabra in documento if palabra not in stopwords]
 
-Explain what these tests test and why
+    return documento
 
-```
-Give an example
-```
+def calcular_frecuencia(documento, palabras):
 
-### And coding style tests
+    # Cuenta las apariciones de cada palabra en el documento
+    distribucion = {}
+    for palabra in palabras:
+        distribucion[palabra] = documento.count(palabra)
 
-Explain what these tests test and why
+    return distribucion
 
-```
-Give an example
-```
+def diagramar_frecuencias(frecuencias, nombre):
 
-## Deployment
+    # Definir los valores a diagramar
+    datos_x = list()
+    for palabra in frecuencias:
+        datos_x.append(frecuencias[palabra])
+    x_series = Series.from_array(datos_x)
 
-Add additional notes about how to deploy this on a live system
+    # Generar imagen
+    imagen = pyplot.figure()
+    grafico = x_series.plot(kind='bar')
 
-## Built With
+    # Definir título y etiquetas
+    grafico.set_title(nombre)
+    grafico.set_xlabel('Palabra')
+    grafico.set_ylabel('Frecuencia')
+    grafico.set_xticklabels(frecuencias)
 
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
+    # Guardar imagen
+    pyplot.savefig('imágenes/{}.png'.format(nombre), bbox_inches='tight')
+    pyplot.close(imagen)
 
-## Contributing
+def diagramar_dispersion(documento, palabras, nombre):
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
+    # Obtener los puntos a diagramar
+    texto = list(nltk.Text(documento))
+    puntos = [(x, y) for x in range(len(texto))
+              for y in range(len(palabras))
+              if texto[x] == palabras[y]]
+    if puntos:
+        x, y = list(zip(*puntos))
+    else:
+        x = y = ()
 
-## Versioning
+    # Generar imagen
+    pylab.plot(x, y, "b|", scalex=.1)
+    pylab.yticks(list(range(len(palabras))), palabras, color="b")
+    pylab.ylim(-1, len(palabras))
 
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
+    # Definir título y etiquetas
+    pylab.title(nombre)
+    pylab.xlabel("Dispersión")
 
-## Authors
+    # Guardar imagen
+    pylab.savefig('imágenes/{}.png'.format(nombre), bbox_inches='tight')
+    pylab.close('all')
 
-* **Billie Thompson** - *Initial work* - [PurpleBooth](https://github.com/PurpleBooth)
+def wordcloud(frecuencias, nombre):
 
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+    # Definir la imagen a generar
+    mask = numpy.array(Image.open('mapa.jpg'))
+    wc = WordCloud(background_color="white", mask=mask)
 
-## License
+    # Remover las palabras sin frecuencia
+    palabras = {}
+    for palabra in frecuencias:
+        if frecuencias[palabra] != 0:
+            palabras[palabra] = frecuencias[palabra]
+        else:
+            palabras[palabra] = 1
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+    # Generar imagen
+    wc.generate_from_frequencies(palabras)
 
-## Acknowledgments
+    # Guardar imagen
+    wc.to_file('imágenes/{}.png'.format(nombre))
 
-* Hat tip to anyone who's code was used
-* Inspiration
-* etc
+    return
+
+    # Abrir documentos como una lista de palabras
+constitucion_1886_documento = leer_documento('Constituciones/Constitución 1886.txt');
+constitucion_1991_documento = leer_documento('Constituciones/Constitución 1991.txt');
+
+    # Abrir archivo de palabras, leyendo línea por línea
+
+numero_linea = 1
+constitucion_1886_frecuencia_total = {}
+constitucion_1991_frecuencia_total = {}
+
+with open('palabras.txt', 'r', encoding='utf-8') as archivo:
+    for linea in archivo:
+        palabras = linea.split()
+
+            # Calcular la frecuencia de las palabras en los documentos
+        constitucion_1886_frecuencia = calcular_frecuencia(constitucion_1886_documento, palabras)
+        constitucion_1991_frecuencia = calcular_frecuencia(constitucion_1991_documento, palabras)
+
+            # Almacenar las palabras
+        constitucion_1886_frecuencia_total = {**constitucion_1886_frecuencia_total, **constitucion_1886_frecuencia}
+        constitucion_1991_frecuencia_total = {**constitucion_1991_frecuencia_total, **constitucion_1991_frecuencia}
+
+            # Generar gráficos de frecuencias
+        diagramar_frecuencias(constitucion_1886_frecuencia, 'Constitución 1886 - Frecuencias - {}'.format(numero_linea))
+        diagramar_frecuencias(constitucion_1991_frecuencia, 'Constitución 1991 - Frecuencias - {}'.format(numero_linea))
+
+            # Generar gráficos de dispersión
+        diagramar_dispersion(constitucion_1886_documento, palabras, 'Constitución 1886 - Dispesión - {}'.format(numero_linea))
+        diagramar_dispersion(constitucion_1991_documento, palabras, 'Constitución 1991 - Dispesión - {}'.format(numero_linea))
+
+        numero_linea += 1
+     
+     #Generar gráficas wordcloud de los documentos
+    wordcloud(constitucion_1886_frecuencia_total, 'Constitución 1886 - WordCloud')
+    wordcloud(constitucion_1991_frecuencia_total, 'Constitución 1991 - WordCloud')
+
+
+## Conclusiones
+
+Se encontró que la Constitución de 1886 es más conservadora y palabras como iglesia y gobierno central son repetitivas y cargadas de contenido. Por el contrario, la Constitución de 1991 es más liberal, palabras como "derecho" y "libertad" están cargadas de un contenido amplio con con el reconocimiento de las libertades y derechos individuales. También se nota la preponderacia de la economía, la inversión y el comercio.
+
+
 
